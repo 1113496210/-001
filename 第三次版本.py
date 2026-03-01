@@ -40,11 +40,13 @@ MARKET_NOISE_RATIO = 0.6
 
 # ================= 通知配置 =================
 BOT_TOKEN = "8557301222:AAHj1rSQ63zJGFXVxxuTniwRP2Y1tj3QsAs"
-CHAT_ID = "5408890841"
+
+TG_USER_ID  = 5408890841          # 你本人私聊 ID
+TG_GROUP_ID = -1003811373349     # 群 ID（-100 开头，超级群）
 
 EMAIL_USER = "1113496210@qq.com"
-EMAIL_PASS = "hzshvazrbnyzfhdf"
-EMAIL_TO = "1113496210@qq.com"
+EMAIL_PASS = "hzshvazrbnyzfhdf"   # 注意：不是 QQ 登录密码
+EMAIL_TO = ["1113496210@qq.com"]
 
 # ================= 观察板块参数 =================
 OBSERVE_MAX_PUSH = 3
@@ -54,23 +56,31 @@ ALT_BLACKLIST = ["BTCUSDT","ETHUSDT"]  # 排除主流币
 
 # ================= 通知模块 =================
 def send_tg(text):
-    try:
-        url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
-        requests.post(url, json={"chat_id": CHAT_ID, "text": text}, timeout=10)
-    except:
-        pass
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+    for chat_id in (TG_USER_ID, TG_GROUP_ID):
+        try:
+            requests.post(
+                url,
+                json={
+                    "chat_id": chat_id,
+                    "text": text,
+                    "disable_web_page_preview": True
+                },
+                timeout=10
+            )
+        except:
+            pass
 
 def send_email_with_text(subject, content):
-    """发送即时文本邮件"""
     try:
         msg = MIMEText(content, "plain", "utf-8")
         msg["From"] = formataddr(("盘面监控", EMAIL_USER))
-        msg["To"] = EMAIL_TO
+        msg["To"] = ",".join(EMAIL_TO)
         msg["Subject"] = Header(subject, "utf-8")
 
         server = smtplib.SMTP_SSL("smtp.qq.com", 465)
         server.login(EMAIL_USER, EMAIL_PASS)
-        server.sendmail(EMAIL_USER, [EMAIL_TO], msg.as_string())
+        server.sendmail(EMAIL_USER, EMAIL_TO, msg.as_string())
         server.quit()
     except:
         pass
@@ -79,24 +89,24 @@ def send_email_with_attachment(subject, body, filepath):
     try:
         msg = MIMEMultipart()
         msg["From"] = formataddr(("盘面监控", EMAIL_USER))
-        msg["To"] = EMAIL_TO
+        msg["To"] = ",".join(EMAIL_TO)
         msg["Subject"] = Header(subject, "utf-8")
+
         msg.attach(MIMEText(body, "plain", "utf-8"))
 
         with open(filepath, "rb") as f:
             part = MIMEApplication(f.read(), Name=os.path.basename(filepath))
-        part['Content-Disposition'] = f'attachment; filename="{os.path.basename(filepath)}"'
+        part["Content-Disposition"] = f'attachment; filename="{os.path.basename(filepath)}"'
         msg.attach(part)
 
         server = smtplib.SMTP_SSL("smtp.qq.com", 465)
         server.login(EMAIL_USER, EMAIL_PASS)
-        server.sendmail(EMAIL_USER, [EMAIL_TO], msg.as_string())
+        server.sendmail(EMAIL_USER, EMAIL_TO, msg.as_string())
         server.quit()
     except:
         pass
 
 def notify_all(text):
-    """即时提示：同时发送 TG + 邮箱"""
     send_tg(text)
     send_email_with_text("实时监控提示", text)
 
@@ -373,3 +383,4 @@ while True:
 
     except Exception as e:
         time.sleep(5)
+
